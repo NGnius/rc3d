@@ -9,7 +9,9 @@ edition = "2018"
 [dependencies]
 rocket = "^0.4"
 #rocket_contrib = {version = "^0.4", features = []}
-libfj = {version = "^0", features = ["simple"]}
+libfj = {version = "^0", features = ["simple", "robocraft"]}
 obj = "^0.10"
 genmesh = "^0.6"
 cgmath = "^0.16"
+serde_json = "1"
+base64 = "0.13"

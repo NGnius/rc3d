@@ -2,10 +2,11 @@
 
 #[macro_use] extern crate rocket;
 use rocket::response::{Content, Response};
-use rocket::http::ContentType;
+use rocket::http::{ContentType, RawStr};
 use std::io::{BufWriter, Cursor};
 
 mod converter;
+mod sandbox_account;
 
 #[get("/")]
 fn index() -> Content<&'static str> {
@@ -70,7 +71,63 @@ fn convert<'r>(id: usize) -> Result<Content<Response<'r>>, ()> {
     Err(())
 }
 
+#[get("/account")]
+fn account() -> Content<&'static str> {
+    // static page, also because laziness
+    Content(ContentType::HTML,
+"<!DOCTYPE html>
+<html>
+    <head>
+        <title>Account Info</title>
+        <meta charset=\"utf-8\"/>
+        <script type=\"application/javascript\">function clickety(event) {
+            //console.log(event);
+            let name = document.getElementById(\"name_input\").value;
+            let pwd = document.getElementById(\"password_input\").value;
+            let data = window.btoa(name+\":::\"+pwd);
+            let new_url = window.location.origin+\"/api/sandbox/account_info/\"+data;
+            //console.log(new_url);
+            window.location.href = new_url;
+        }</script>
+    </head>
+    <body>
+        <div>
+            <div>View info about your user account.
+            </div>
+            <div>
+                <label for=\"name_input\">Username:</label>
+                <input type=\"text\" id=\"name_input\">
+                <label for=\"password_input\">Password:</label>
+                <input type=\"password\" id=\"password_input\">
+                <button type=\"button\" onclick=\"clickety(event)\">Get Info</button>
+            </div>
+            <div>
+                <p>
+                Generally, it's a bad idea to input credentials into some random website.
+                This is using a secure connection and the source code is open source, but still do this at your own risk.
+                </p>
+            </div>
+            <div><a href=\"https://github.com/NGnius/rc3d\">Source code</a></div>
+        </div>
+    </body>
+</html>")
+}
+
+#[get("/api/sandbox/account_info/<data>")]
+fn account_info<'r>(data: &RawStr) -> Result<Content<Response<'r>>, String> {
+    let result = sandbox_account::parse_then_request_username(&data.as_str())?;
+    let body = Cursor::new(result);
+    if let Ok(resp) = Response::build()
+        .sized_body(body)
+        .ok::<()>() {
+        return Ok(Content(ContentType::JSON, resp));
+    } else {
+        println!("Error building response")
+    }
+    Err("Unknown Error".to_string())
+}
+
 fn main() {
-    rocket::ignite().mount("/", routes![index, convert]).launch();
+    rocket::ignite().mount("/", routes![index, convert, account, account_info]).launch();
 }
 
